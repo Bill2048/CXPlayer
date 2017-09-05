@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <com.chaoxing.player.RatioFrameLayout
+        android:id="@+id/content_frame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center">
+
+        <SurfaceView
+            android:id="@+id/surface_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/tv_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </com.chaoxing.player.RatioFrameLayout>
+
+    <com.chaoxing.player.PlaybackControlView
+        android:id="@+id/playback_control"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</merge>
