@@ -5,9 +5,12 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+
+import io.vov.vitamio.MediaPlayer;
 
 /**
  * Created by HuWei on 2017/8/31.
@@ -39,16 +42,72 @@ public class CXPlayerView extends FrameLayout {
         controlView = findViewById(R.id.playback_control);
     }
 
-    public void setPlayer(CXPlayer cxPlayer) {
-        if (this.player == cxPlayer) {
-            return;
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            if (controlView != null && player != null) {
+                if (controlView.isVisible()) {
+                    controlView.hide();
+                } else {
+                    controlView.show();
+                }
+                return true;
+            }
         }
-        if (this.player != null) {
-            player.clearVideoTextureView(surfaceView);
-        }
-        this.player = cxPlayer;
-        player.setVideoSurfaceView(surfaceView);
+        return false;
     }
 
+    public void setPlayer(CXPlayer cxPlayer) {
+        if (player == cxPlayer) {
+            return;
+        }
+        if (player != null) {
+            player.clearVideoTextureView(surfaceView);
+            player.removePlayerCallback(playerCallback);
+        }
+        player = cxPlayer;
+        player.setVideoSurfaceView(surfaceView);
+        player.addPlayerCallback(playerCallback);
+        controlView.setPlayer(player);
+    }
+
+    private PlayerCallback playerCallback = new PlayerCallback() {
+
+        @Override
+        public void onVideoSizeChanged(int width, int height) {
+            contentFrame.setResizeMode(RatioFrameLayout.RESIZE_MODE_FIT);
+            contentFrame.setAspectRatio((float) width / (float) height);
+        }
+
+        @Override
+        public void onPrepared() {
+
+        }
+
+        @Override
+        public void onBufferingUpdate(int percent) {
+
+        }
+
+        @Override
+        public boolean onInfo(int what, int extra) {
+            return false;
+        }
+
+        @Override
+        public boolean onError(int what, int extra) {
+            return false;
+        }
+
+        @Override
+        public void onSeekComplete() {
+
+        }
+
+        @Override
+        public void onCompletion(MediaPlayer mediaPlayer) {
+
+        }
+    };
 
 }

@@ -29,6 +29,10 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     protected void play() {
+        if (playing) {
+            player.resumePlay();
+            return;
+        }
         playing = true;
         Video mediaSource = new Video(dataSource, null);
         mediaSource.setDataSource(dataSource);

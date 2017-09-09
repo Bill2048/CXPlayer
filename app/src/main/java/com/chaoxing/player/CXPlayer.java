@@ -6,6 +6,9 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import io.vov.vitamio.MediaPlayer;
 import io.vov.vitamio.Vitamio;
 
@@ -25,7 +28,7 @@ public class CXPlayer {
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
 
-    private PlayerCallback playerCallback;
+    private Set<PlayerCallback> playerCallbackSet = new HashSet<>();
     private boolean prepared;
 
     private CXPlayer(Context context) {
@@ -82,8 +85,12 @@ public class CXPlayer {
 
     }
 
-    public void setPlayerCallback(PlayerCallback playerCallback) {
-        this.playerCallback = playerCallback;
+    public void addPlayerCallback(PlayerCallback callback) {
+        playerCallbackSet.add(callback);
+    }
+
+    public void removePlayerCallback(PlayerCallback callback) {
+        playerCallbackSet.remove(callback);
     }
 
     private final SurfaceHolder.Callback surfaceCallback = new SurfaceHolder.Callback() {
@@ -115,8 +122,10 @@ public class CXPlayer {
         @Override
         public void onVideoSizeChanged(MediaPlayer mediaPlayer, int width, int height) {
             Log.d(TAG, "onVideoSizeChanged() width : " + width + " height : " + height);
-            if (playerCallback != null) {
-                playerCallback.onVideoSizeChanged(width, height);
+            for (PlayerCallback callback : playerCallbackSet) {
+                if (callback != null) {
+                    callback.onVideoSizeChanged(width, height);
+                }
             }
         }
     };
@@ -196,6 +205,16 @@ public class CXPlayer {
 
         }
     };
+
+    public void resumePlay() {
+        if (mediaPlayer != null) {
+            if (prepared) {
+                mediaPlayer.start();
+            } else {
+                mediaPlayer.prepareAsync();
+            }
+        }
+    }
 
     public void pause() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
