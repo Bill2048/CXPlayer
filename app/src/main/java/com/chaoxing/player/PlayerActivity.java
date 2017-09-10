@@ -1,11 +1,8 @@
 package com.chaoxing.player;
 
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-
-import java.io.File;
 
 /**
  * Created by HuWei on 2017/8/30.
@@ -13,7 +10,8 @@ import java.io.File;
 
 public class PlayerActivity extends AppCompatActivity {
 
-    private String dataSource = Environment.getExternalStorageDirectory() + File.separator + "media" + File.separator + "video2.mp4";
+//        private String dataSource = Environment.getExternalStorageDirectory() + File.separator + "media" + File.separator + "video.mp4";
+    private String dataSource = "http://s1.ananas.chaoxing.com/video/32/84/73/c6ad1b62880ed08f99b62dfa044f3d5e/sd.mp4";
 
     private CXPlayerView playerView;
 

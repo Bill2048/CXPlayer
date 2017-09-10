@@ -62,7 +62,6 @@ public class CXPlayerView extends FrameLayout {
             return;
         }
         if (player != null) {
-            player.clearVideoTextureView(surfaceView);
             player.removePlayerCallback(playerCallback);
         }
         player = cxPlayer;

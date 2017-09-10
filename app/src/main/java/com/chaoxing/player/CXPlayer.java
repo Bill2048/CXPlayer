@@ -2,6 +2,7 @@ package com.chaoxing.player;
 
 import android.content.Context;
 import android.graphics.PixelFormat;
+import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -21,6 +22,9 @@ public class CXPlayer {
 
     private static final String TAG = "CXPlayer";
 
+    public static final int DEFAULT_UPDATE_POSITION_TIMEOUT_MS = 1000;
+
+    private Handler mainHandler = new Handler();
     private Context context;
 
     private MediaPlayer mediaPlayer;
@@ -29,7 +33,26 @@ public class CXPlayer {
     private SurfaceHolder surfaceHolder;
 
     private Set<PlayerCallback> playerCallbackSet = new HashSet<>();
+    private Set<PlayerEventListener> playerEventListenerSet = new HashSet<>();
+
+    private int updatePositionTimeoutMs = DEFAULT_UPDATE_POSITION_TIMEOUT_MS;
     private boolean prepared;
+    private int duration;
+
+    private Runnable updatePositionAction = new Runnable() {
+        @Override
+        public void run() {
+            if (prepared && mediaPlayer != null) {
+                if (duration == 0) {
+                    duration = (int) mediaPlayer.getDuration();
+                }
+                for (PlayerEventListener listener : playerEventListenerSet) {
+                    listener.onPositionChanged((int) mediaPlayer.getCurrentPosition(), duration);
+                }
+                updatePositionAfterTimeout();
+            }
+        }
+    };
 
     private CXPlayer(Context context) {
         this.context = context;
@@ -54,11 +77,20 @@ public class CXPlayer {
         mediaPlayer.setScreenOnWhilePlaying(true);
     }
 
+    private void resetPlayer() {
+        prepared = false;
+        duration = 0;
+        removeUpdatePositionAction();
+        mediaPlayer.reset();
+        for (PlayerEventListener listener : playerEventListenerSet) {
+            listener.onPositionChanged(0, 0);
+        }
+    }
+
     public void prepare(Video video) {
+        resetPlayer();
         if (video.getDataSource() != null && !video.getDataSource().trim().isEmpty()) {
             try {
-                prepared = false;
-                mediaPlayer.reset();
                 mediaPlayer.setDataSource(video.getDataSource());
                 if (surfaceHolder.isCreating()) {
                     mediaPlayer.setDisplay(surfaceHolder);
@@ -81,16 +113,20 @@ public class CXPlayer {
         surfaceHolder.addCallback(surfaceCallback);
     }
 
-    public void clearVideoTextureView(SurfaceView surfaceView) {
-
-    }
-
     public void addPlayerCallback(PlayerCallback callback) {
         playerCallbackSet.add(callback);
     }
 
     public void removePlayerCallback(PlayerCallback callback) {
         playerCallbackSet.remove(callback);
+    }
+
+    public void addPlayerEventListener(PlayerEventListener listener) {
+        playerEventListenerSet.add(listener);
+    }
+
+    public void removePlayerEventListener(PlayerEventListener listener) {
+        playerEventListenerSet.remove(listener);
     }
 
     private final SurfaceHolder.Callback surfaceCallback = new SurfaceHolder.Callback() {
@@ -133,15 +169,24 @@ public class CXPlayer {
     private MediaPlayer.OnPreparedListener onPreparedListener = new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mediaPlayer) {
+            Log.d(TAG, "onPrepared()");
             prepared = true;
+            duration = (int) mediaPlayer.getDuration();
             mediaPlayer.start();
+            for (PlayerCallback callback : playerCallbackSet) {
+                callback.onPrepared();
+            }
+            for (PlayerEventListener listener : playerEventListenerSet) {
+                listener.onPositionChanged((int) mediaPlayer.getCurrentPosition(), (int) mediaPlayer.getDuration());
+            }
+            updatePositionAfterTimeout();
         }
     };
 
     private MediaPlayer.OnBufferingUpdateListener bufferingUpdateListener = new MediaPlayer.OnBufferingUpdateListener() {
         @Override
         public void onBufferingUpdate(MediaPlayer mediaPlayer, int percent) {
-
+            Log.d(TAG, "onBufferingUpdate() percent : " + percent);
         }
     };
 
@@ -206,10 +251,26 @@ public class CXPlayer {
         }
     };
 
+    private void updatePositionAfterTimeout() {
+        mainHandler.removeCallbacks(updatePositionAction);
+        if (updatePositionTimeoutMs > 0) {
+            mainHandler.postDelayed(updatePositionAction, updatePositionTimeoutMs);
+        }
+    }
+
+    private void removeUpdatePositionAction() {
+        mainHandler.removeCallbacks(updatePositionAction);
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
     public void resumePlay() {
         if (mediaPlayer != null) {
             if (prepared) {
                 mediaPlayer.start();
+                updatePositionAfterTimeout();
             } else {
                 mediaPlayer.prepareAsync();
             }
@@ -220,9 +281,11 @@ public class CXPlayer {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
         }
+        removeUpdatePositionAction();
     }
 
     public void release() {
+        removeUpdatePositionAction();
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
@@ -231,4 +294,6 @@ public class CXPlayer {
             surfaceHolder = null;
         }
     }
+
+
 }

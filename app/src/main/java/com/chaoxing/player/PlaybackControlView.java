@@ -3,12 +3,12 @@ package com.chaoxing.player;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.AppCompatSeekBar;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import io.vov.vitamio.MediaPlayer;
@@ -19,6 +19,32 @@ import io.vov.vitamio.MediaPlayer;
 
 public class PlaybackControlView extends FrameLayout {
 
+    public interface ControlDispatcher {
+
+        boolean dispatchSetPlayWhenReady(CXPlayer player, boolean playWhenReady);
+
+
+        boolean dispatchSeekTo(CXPlayer player, int windowIndex, long positionMs);
+
+    }
+
+    public static final ControlDispatcher DEFAULT_CONTROL_DISPATCHER = new ControlDispatcher() {
+
+        @Override
+        public boolean dispatchSetPlayWhenReady(CXPlayer player, boolean playWhenReady) {
+//            player.setPlayWhenReady(playWhenReady);
+            return true;
+        }
+
+        @Override
+        public boolean dispatchSeekTo(CXPlayer player, int windowIndex, long positionMs) {
+//            player.seekTo(windowIndex, positionMs);
+            return true;
+        }
+
+
+    };
+
     // control view 默认显示时常
     public static final int DEFAULT_SHOW_TIMEOUT_MS = 5000;
 
@@ -27,7 +53,7 @@ public class PlaybackControlView extends FrameLayout {
     private ImageButton ibPause;
     private ImageButton ibNext;
     private TextView tvPosition;
-    private SeekBar sbProgress;
+    private AppCompatSeekBar sbProgress;
     private TextView tvDuration;
 
     private boolean isAttachedToWindow;
@@ -89,7 +115,8 @@ public class PlaybackControlView extends FrameLayout {
             this.player.removePlayerCallback(playerCallback);
         }
         this.player = player;
-        this.player.addPlayerCallback(playerCallback);
+        player.addPlayerCallback(playerCallback);
+        player.addPlayerEventListener(playerEventListener);
     }
 
     private OnClickListener onClickListener = new OnClickListener() {
@@ -142,6 +169,24 @@ public class PlaybackControlView extends FrameLayout {
         @Override
         public void onCompletion(MediaPlayer mediaPlayer) {
 
+        }
+    };
+
+    private PlayerEventListener playerEventListener = new PlayerEventListener() {
+        @Override
+        public void onPositionChanged(int currentPosition, int duration) {
+            if (!isAttachedToWindow) {
+                return;
+            }
+            if (sbProgress.getMax() != duration) {
+                sbProgress.setMax(duration);
+            }
+            sbProgress.setProgress((int) currentPosition);
+            String positionStr = PlayerUtils.formatTime(currentPosition);
+            String durationStr = PlayerUtils.formatTime(duration);
+            String[] fmtTime = PlayerUtils.formatTime(positionStr, durationStr);
+            tvPosition.setText(fmtTime[0]);
+            tvDuration.setText(fmtTime[1]);
         }
     };
 
