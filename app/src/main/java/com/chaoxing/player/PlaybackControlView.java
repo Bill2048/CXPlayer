@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import io.vov.vitamio.MediaPlayer;
@@ -24,7 +25,7 @@ public class PlaybackControlView extends FrameLayout {
         boolean dispatchSetPlayWhenReady(CXPlayer player, boolean playWhenReady);
 
 
-        boolean dispatchSeekTo(CXPlayer player, int windowIndex, long positionMs);
+        boolean dispatchSeekTo(CXPlayer player, int positionMs);
 
     }
 
@@ -32,17 +33,15 @@ public class PlaybackControlView extends FrameLayout {
 
         @Override
         public boolean dispatchSetPlayWhenReady(CXPlayer player, boolean playWhenReady) {
-//            player.setPlayWhenReady(playWhenReady);
+            player.setPlayWhenReady(playWhenReady);
             return true;
         }
 
         @Override
-        public boolean dispatchSeekTo(CXPlayer player, int windowIndex, long positionMs) {
-//            player.seekTo(windowIndex, positionMs);
+        public boolean dispatchSeekTo(CXPlayer player, int positionMs) {
+            player.seekTo(positionMs);
             return true;
         }
-
-
     };
 
     // control view 默认显示时常
@@ -55,6 +54,8 @@ public class PlaybackControlView extends FrameLayout {
     private TextView tvPosition;
     private AppCompatSeekBar sbProgress;
     private TextView tvDuration;
+
+    private ControlDispatcher controlDispatcher = DEFAULT_CONTROL_DISPATCHER;
 
     private boolean isAttachedToWindow;
 
@@ -90,7 +91,9 @@ public class PlaybackControlView extends FrameLayout {
         ibNext.setOnClickListener(onClickListener);
         tvPosition = findViewById(R.id.tv_position);
         sbProgress = findViewById(R.id.sb_progress);
+        sbProgress.setOnSeekBarChangeListener(onSeekBarChangeListener);
         tvDuration = findViewById(R.id.tv_duration);
+        reset();
     }
 
     @Override
@@ -105,6 +108,33 @@ public class PlaybackControlView extends FrameLayout {
         super.onDetachedFromWindow();
         isAttachedToWindow = false;
         removeCallbacks(hideAction);
+    }
+
+    public void setControlDispatcher(ControlDispatcher controlDispatcher) {
+        this.controlDispatcher = controlDispatcher;
+    }
+
+    public void reset() {
+        ibPlay.setVisibility(View.VISIBLE);
+        ibPause.setVisibility(View.GONE);
+        setProgress(0, 0);
+    }
+
+    public void setProgress(int currentPosition, int duration) {
+        if (draggingSeekBar) {
+            return;
+        }
+        if (sbProgress.getMax() != duration) {
+            sbProgress.setMax(duration);
+        }
+        sbProgress.setProgress(currentPosition);
+        if (duration == 0) {
+            sbProgress.setEnabled(false);
+        } else {
+            if (!sbProgress.isEnabled()) {
+                sbProgress.setEnabled(true);
+            }
+        }
     }
 
     public void setPlayer(CXPlayer player) {
@@ -122,16 +152,50 @@ public class PlaybackControlView extends FrameLayout {
     private OnClickListener onClickListener = new OnClickListener() {
         @Override
         public void onClick(View view) {
+            show();
             int id = view.getId();
             if (id == R.id.ib_previous) {
 
             } else if (id == R.id.ib_play) {
-
+                if (controlDispatcher != null) {
+                    controlDispatcher.dispatchSetPlayWhenReady(player, true);
+                }
             } else if (id == R.id.ib_pause) {
-
+                if (controlDispatcher != null) {
+                    controlDispatcher.dispatchSetPlayWhenReady(player, false);
+                }
             } else if (id == R.id.ib_next) {
 
             }
+        }
+    };
+
+    private boolean draggingSeekBar;
+    private SeekBar.OnSeekBarChangeListener onSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            if (fromUser) {
+                draggingSeekBar = true;
+                show();
+            }
+            String positionStr = PlayerUtils.formatTime(progress);
+            String durationStr = PlayerUtils.formatTime(seekBar.getMax());
+            String[] fmtTime = PlayerUtils.formatTime(positionStr, durationStr);
+            tvPosition.setText(fmtTime[0]);
+            tvDuration.setText(fmtTime[1]);
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            if (controlDispatcher != null) {
+                controlDispatcher.dispatchSeekTo(player, seekBar.getProgress());
+            }
+            draggingSeekBar = false;
         }
     };
 
@@ -168,26 +232,31 @@ public class PlaybackControlView extends FrameLayout {
 
         @Override
         public void onCompletion(MediaPlayer mediaPlayer) {
-
+            reset();
         }
     };
 
     private PlayerEventListener playerEventListener = new PlayerEventListener() {
+
+        @Override
+        public void onPlayWhenReady(boolean playWhenReady) {
+            if (playWhenReady) {
+                ibPlay.setVisibility(View.GONE);
+                ibPause.setVisibility(View.VISIBLE);
+            } else {
+                ibPause.setVisibility(View.GONE);
+                ibPlay.setVisibility(View.VISIBLE);
+            }
+        }
+
         @Override
         public void onPositionChanged(int currentPosition, int duration) {
             if (!isAttachedToWindow) {
                 return;
             }
-            if (sbProgress.getMax() != duration) {
-                sbProgress.setMax(duration);
-            }
-            sbProgress.setProgress((int) currentPosition);
-            String positionStr = PlayerUtils.formatTime(currentPosition);
-            String durationStr = PlayerUtils.formatTime(duration);
-            String[] fmtTime = PlayerUtils.formatTime(positionStr, durationStr);
-            tvPosition.setText(fmtTime[0]);
-            tvDuration.setText(fmtTime[1]);
+            setProgress(currentPosition, duration);
         }
+
     };
 
     public void show() {
@@ -216,6 +285,5 @@ public class PlaybackControlView extends FrameLayout {
             }
         }
     }
-
 
 }

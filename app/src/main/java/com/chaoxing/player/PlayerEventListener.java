@@ -6,6 +6,8 @@ package com.chaoxing.player;
 
 public interface PlayerEventListener {
 
+    void onPlayWhenReady(boolean playWhenReady);
+
     void onPositionChanged(int currentPosition, int duration);
 
 }

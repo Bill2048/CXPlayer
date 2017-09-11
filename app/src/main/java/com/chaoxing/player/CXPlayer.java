@@ -36,21 +36,15 @@ public class CXPlayer {
     private Set<PlayerEventListener> playerEventListenerSet = new HashSet<>();
 
     private int updatePositionTimeoutMs = DEFAULT_UPDATE_POSITION_TIMEOUT_MS;
+
+    private Video video;
     private boolean prepared;
     private int duration;
 
     private Runnable updatePositionAction = new Runnable() {
         @Override
         public void run() {
-            if (prepared && mediaPlayer != null) {
-                if (duration == 0) {
-                    duration = (int) mediaPlayer.getDuration();
-                }
-                for (PlayerEventListener listener : playerEventListenerSet) {
-                    listener.onPositionChanged((int) mediaPlayer.getCurrentPosition(), duration);
-                }
-                updatePositionAfterTimeout();
-            }
+            updatePosition();
         }
     };
 
@@ -82,12 +76,18 @@ public class CXPlayer {
         duration = 0;
         removeUpdatePositionAction();
         mediaPlayer.reset();
-        for (PlayerEventListener listener : playerEventListenerSet) {
-            listener.onPositionChanged(0, 0);
+    }
+
+    public void setPlayWhenReady(boolean playWhenReady) {
+        if (playWhenReady) {
+            resumePlay();
+        } else {
+            pause();
         }
     }
 
     public void prepare(Video video) {
+        this.video = video;
         resetPlayer();
         if (video.getDataSource() != null && !video.getDataSource().trim().isEmpty()) {
             try {
@@ -96,6 +96,9 @@ public class CXPlayer {
                     mediaPlayer.setDisplay(surfaceHolder);
                 }
                 mediaPlayer.prepareAsync();
+                for (PlayerEventListener listener : playerEventListenerSet) {
+                    listener.onPlayWhenReady(true);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -176,10 +179,7 @@ public class CXPlayer {
             for (PlayerCallback callback : playerCallbackSet) {
                 callback.onPrepared();
             }
-            for (PlayerEventListener listener : playerEventListenerSet) {
-                listener.onPositionChanged((int) mediaPlayer.getCurrentPosition(), (int) mediaPlayer.getDuration());
-            }
-            updatePositionAfterTimeout();
+            updatePosition();
         }
     };
 
@@ -240,14 +240,17 @@ public class CXPlayer {
     private MediaPlayer.OnSeekCompleteListener onSeekCompleteListener = new MediaPlayer.OnSeekCompleteListener() {
         @Override
         public void onSeekComplete(MediaPlayer mediaPlayer) {
-
+            resumePlay();
         }
     };
 
     private MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mediaPlayer) {
-
+            resetPlayer();
+            for (PlayerCallback callback : playerCallbackSet) {
+                callback.onCompletion(mediaPlayer);
+            }
         }
     };
 
@@ -262,18 +265,46 @@ public class CXPlayer {
         mainHandler.removeCallbacks(updatePositionAction);
     }
 
+    protected void dispatchOnPlayWhenReady(boolean playWhenReady) {
+        for (PlayerEventListener listener : playerEventListenerSet) {
+            listener.onPlayWhenReady(playWhenReady);
+        }
+    }
+
+    protected void updatePosition() {
+        if (prepared && mediaPlayer != null) {
+            if (duration == 0) {
+                duration = (int) mediaPlayer.getDuration();
+            }
+            int currentPosition = (int) mediaPlayer.getCurrentPosition();
+            for (PlayerEventListener listener : playerEventListenerSet) {
+                listener.onPositionChanged(currentPosition, duration);
+            }
+            updatePositionAfterTimeout();
+        }
+    }
+
     public int getDuration() {
         return duration;
+    }
+
+    public void seekTo(int position) {
+        if (mediaPlayer != null) {
+            mediaPlayer.seekTo(position);
+        }
     }
 
     public void resumePlay() {
         if (mediaPlayer != null) {
             if (prepared) {
-                mediaPlayer.start();
-                updatePositionAfterTimeout();
+                if (!mediaPlayer.isPlaying()) {
+                    mediaPlayer.start();
+                }
+                updatePosition();
             } else {
-                mediaPlayer.prepareAsync();
+                prepare(video);
             }
+            dispatchOnPlayWhenReady(true);
         }
     }
 
@@ -282,10 +313,12 @@ public class CXPlayer {
             mediaPlayer.pause();
         }
         removeUpdatePositionAction();
+        dispatchOnPlayWhenReady(false);
+        updatePosition();
     }
 
     public void release() {
-        removeUpdatePositionAction();
+        resetPlayer();
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
@@ -294,6 +327,5 @@ public class CXPlayer {
             surfaceHolder = null;
         }
     }
-
 
 }

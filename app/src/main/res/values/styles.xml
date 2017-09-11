@@ -17,6 +17,7 @@
 
     <style name="Player" parent="AppTheme.Fullscreen">
         <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:windowBackground">@android:color/black</item>
     </style>
 
 </resources>
