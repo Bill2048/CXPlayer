@@ -21,8 +21,9 @@ public class CXPlayerView extends FrameLayout {
     private RatioFrameLayout contentFrame;
     private SurfaceView surfaceView;
     private TextView tvSubtitle;
-    private PlaybackControlView controlView;
+    private PlaybackControlView controller;
 
+    private PlayerViewCallbacks playerViewCallbacks;
     private CXPlayer player;
 
     public CXPlayerView(@NonNull Context context) {
@@ -39,17 +40,17 @@ public class CXPlayerView extends FrameLayout {
         contentFrame = findViewById(R.id.content_frame);
         surfaceView = findViewById(R.id.surface_view);
         tvSubtitle = findViewById(R.id.tv_subtitle);
-        controlView = findViewById(R.id.playback_control);
+        controller = findViewById(R.id.playback_control);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-            if (controlView != null && player != null) {
-                if (controlView.isVisible()) {
-                    controlView.hide();
+            if (controller != null && player != null) {
+                if (controller.isVisible()) {
+                    controller.hide();
                 } else {
-                    controlView.show();
+                    controller.show();
                 }
                 return true;
             }
@@ -67,7 +68,7 @@ public class CXPlayerView extends FrameLayout {
         player = cxPlayer;
         player.setVideoSurfaceView(surfaceView);
         player.addPlayerCallback(playerCallback);
-        controlView.setPlayer(player);
+        controller.setPlayer(player);
     }
 
     private PlayerCallback playerCallback = new PlayerCallback() {
@@ -109,4 +110,16 @@ public class CXPlayerView extends FrameLayout {
         }
     };
 
+    public interface PlayerViewCallbacks {
+        void onControlViewVisible();
+        void onControlViewInvisible();
+    }
+
+    public void setPlayerCallback(PlayerCallback playerCallback) {
+        this.playerCallback = playerCallback;
+    }
+
+    public void setControllerVisibilityListener(PlaybackControlView.VisibilityListener listener) {
+        controller.setVisibilityListener(listener);
+    }
 }

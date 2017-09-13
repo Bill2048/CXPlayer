@@ -186,7 +186,6 @@ public class CXPlayer {
     private MediaPlayer.OnBufferingUpdateListener bufferingUpdateListener = new MediaPlayer.OnBufferingUpdateListener() {
         @Override
         public void onBufferingUpdate(MediaPlayer mediaPlayer, int percent) {
-            Log.d(TAG, "onBufferingUpdate() percent : " + percent);
         }
     };
 
@@ -277,6 +276,7 @@ public class CXPlayer {
                 duration = (int) mediaPlayer.getDuration();
             }
             int currentPosition = (int) mediaPlayer.getCurrentPosition();
+            Log.d(TAG, "position : " + currentPosition);
             for (PlayerEventListener listener : playerEventListenerSet) {
                 listener.onPositionChanged(currentPosition, duration);
             }

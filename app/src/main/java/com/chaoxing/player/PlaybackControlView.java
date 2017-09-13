@@ -20,6 +20,12 @@ import io.vov.vitamio.MediaPlayer;
 
 public class PlaybackControlView extends FrameLayout {
 
+    public interface VisibilityListener {
+
+        void onVisibilityChange(int visibility);
+
+    }
+
     public interface ControlDispatcher {
 
         boolean dispatchSetPlayWhenReady(CXPlayer player, boolean playWhenReady);
@@ -55,6 +61,7 @@ public class PlaybackControlView extends FrameLayout {
     private AppCompatSeekBar sbProgress;
     private TextView tvDuration;
 
+    private VisibilityListener visibilityListener;
     private ControlDispatcher controlDispatcher = DEFAULT_CONTROL_DISPATCHER;
 
     private boolean isAttachedToWindow;
@@ -259,9 +266,16 @@ public class PlaybackControlView extends FrameLayout {
 
     };
 
+    public void setVisibilityListener(VisibilityListener visibilityListener) {
+        this.visibilityListener = visibilityListener;
+    }
+
     public void show() {
         if (!isVisible()) {
             setVisibility(VISIBLE);
+            if(visibilityListener != null) {
+                visibilityListener.onVisibilityChange(getVisibility());
+            }
         }
         hideAfterTimeout();
     }
@@ -270,6 +284,9 @@ public class PlaybackControlView extends FrameLayout {
         if (isVisible()) {
             setVisibility(GONE);
             removeCallbacks(hideAction);
+            if(visibilityListener != null) {
+                visibilityListener.onVisibilityChange(getVisibility());
+            }
         }
     }
 
